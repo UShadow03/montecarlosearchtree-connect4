@@ -15,27 +15,35 @@ int main() {
     int playerChoice;
     MCTS simulation;
     int numSim;
+    char choice;
     realGame.playerTurn = 1;
     realGame.blocksDropped = 0;
     while (true) {
         realGame.printTable();
-        cout << "Player " << realGame.playerTurn << ": Your turn!\n";
-        cout << "Choose the column (1-7) to drop your shape!\n";
-        
-        cout << "How many simulations do you want to run?\n";
-        cin >> numSim;
-        int p1Wins = 0;
-        int p2Wins = 0;
-        int ties = 0;
-        for (int i = 0; i < numSim; ++i) {
-            int result = simulation.simulate(realGame);
-            if (result == 0) ++ties;
-            if (result == 1) ++p1Wins;
-            if (result == 2) ++p2Wins;
+        cout << "Player " << realGame.playerTurn << ": Your turn!\n";  
+        cout << "Would you like to use an MC Tree Search algorithm to help making your decisions? (Y/N)\n";
+        cin >> choice;
+        while (true) {
+            if (choice == 'Y') {
+                cout << "How many simulations do you want to run?\n";
+                cin >> numSim;
+                MCTSResult result = simulation.findBestMove(realGame, numSim);
+                cout << "Statistics:\n";
+                for (const MoveStats& stat : result.stats) {
+                    cout << "Column " << stat.move + 1 << ": Visits: " << stat.visits << " Wins: " << stat.wins << " Winrate: " << stat.winRate << "\n";
+                }
+                cout << "Best Move: " << result.bestMove + 1 << "\n";
+                break;
+            }
+            else if (choice == 'N') {
+                break;
+            }
+            else {
+                cout << "Choice invalid! Try again.\n";
+                cin >> choice;
+            }
         }
-        cout << "Number of ties:" << ties << "\n";
-        cout << "Number of Player 1 wins:" << p1Wins << "\n";
-        cout << "Number of Player 2 wins:" << p2Wins << "\n";
+        cout << "Which column do you want to drop your shape? (1-7)\n";
         while (true) {
             cin >> playerChoice;
             if (cin.fail()) {

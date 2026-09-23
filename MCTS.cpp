@@ -3,44 +3,40 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 using namespace std;
 
 random_device rd;
 mt19937 gen(rd());
 std::uniform_int_distribution<int> distrib(1, 7);
-
-Node::Node(GameState state, Node* parent)
-    : state(state), parent(parent), visits(0), wins(0) {
+double C = sqrt(2);
+Node::Node(GameState state, Node* parent, int move)
+    : state(state), parent(parent), move(move), visits(0), wins(0) {
 }
 
 Node* MCTS::expand(Node* node) {
     vector<int> moves = node->state.getLegalMoves();
 
-    // Remove moves that have already been expanded.
     for (Node* child : node->children) {
-        for (int col = 0; col < 7; ++col) {
-            for (int row = 0; row < 6; ++row) {
-                if (node->state.board[row][col] != child->state.board[row][col]) {
-                    moves.erase(
-                        remove(moves.begin(), moves.end(), col),
-                        moves.end()
-                    );
-                    break;
-                }
-            }
-        }
+        moves.erase(
+            remove(moves.begin(), moves.end(), child->move),
+            moves.end()
+        );
     }
 
     // No unexpanded moves remain.
     if (moves.empty()) {
         return nullptr;
     }
-    
+    // Choose one unexpanded move.
     int move = moves[0];
 
+    // Create the new game state.
     GameState newState = node->state;
     newState.droppingShape(move + 1);
 
+    // Switch player.
     if (newState.playerTurn == 1) {
         newState.playerTurn = 2;
     }
@@ -50,7 +46,8 @@ Node* MCTS::expand(Node* node) {
 
     newState.blocksDropped++;
 
-    Node* child = new Node(newState, node);
+    // Create exactly ONE child.
+    Node* child = new Node(newState, node, move);
     node->children.push_back(child);
 
     return child;
@@ -89,5 +86,91 @@ int MCTS::simulate(GameState state) {
 
 
     }
+}
+
+Node* MCTS::select(Node* node) {
+    while (isFullyExpanded(node)) {
+        Node* bestChild = node->children[0];
+        double bestUCT = calculateUCT(bestChild);
+
+        for (Node* child : node->children) {
+            double uct = calculateUCT(child);
+
+            if (uct > bestUCT) {
+                bestUCT = uct;
+                bestChild = child;
+            }
+        }
+
+        node = bestChild;
+    }
+
+    return node;
+}
+
+double MCTS::calculateUCT(Node* node) {
+    if (node->visits == 0) {
+        return numeric_limits<double>::max();
+    }
+
+    double exploitation = static_cast<double> (node->wins)/node->visits;
+    double exploration = C*sqrt(log(node->parent->visits)/node->visits);
+
+    return exploitation + exploration;
+}
+
+bool MCTS::isFullyExpanded(Node* node) {
+    return node->children.size() == node->state.getLegalMoves().size();
+}
+
+void MCTS::backpropagate(Node* node, int result) {
+    while (node != nullptr) {
+        node->visits++;
+
+        if (result == 1) {
+            node->wins++;
+        }
+
+        node = node->parent;
+    }
+}
+
+MCTSResult MCTS::findBestMove(GameState state, int simulations) {
+    Node* root = new Node(state);
+    MCTS mcts;
+    for (int i = 0; i < simulations; ++i) {
+        Node* selection = mcts.select(root);
+        Node* expansion = mcts.expand(selection);
+        int result = mcts.simulate(expansion->state);
+        mcts.backpropagate(expansion, result);
+    }
+
+    Node* bestChild = root->children[0];
+
+    for (Node* child : root->children) {
+        if (child->visits > bestChild->visits) {
+            bestChild = child;
+        }
+    }
+    vector<MoveStats> stats;
+    for (Node* child : root->children) {
+        MoveStats moveStats;
+
+        moveStats.move = child->move;
+        moveStats.visits = child->visits;
+        moveStats.wins = child->wins;
+        moveStats.winRate =
+            static_cast<double>(child->wins) / child->visits;
+
+        stats.push_back(moveStats);
+    }
+
+    MCTSResult result;
+
+    result.bestMove = bestChild->move;
+    result.stats = stats;
+
+    return result;
+
 }
 

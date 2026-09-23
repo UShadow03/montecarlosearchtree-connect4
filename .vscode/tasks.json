@@ -24,7 +24,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Build main.cpp and GameState.cpp"
+            "detail": "Build Connect Four"
         }
     ]
 }
