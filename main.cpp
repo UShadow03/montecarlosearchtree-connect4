@@ -4,6 +4,11 @@ using namespace std;
 char board[6][7];
 int playerTurn = 1;
 int blocksDropped = 0;
+
+struct GameState {
+    char board[6][7];
+    int playerTurn;
+};
 // This function prints the entire 6x7 Connect Four table.
 void printTable() {
     //Printing out the table
@@ -86,6 +91,7 @@ bool checkWin(int player) {
 
     return false;
 }
+
 
 int main() {
     //Initalize the table by filling all empty spots with '.'.
