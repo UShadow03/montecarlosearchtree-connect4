@@ -1,111 +1,41 @@
+#include "GameState.hpp"
+#include "MCTS.hpp"
 #include <iostream>
 using namespace std;
 
-char board[6][7];
-int playerTurn = 1;
-int blocksDropped = 0;
-
-struct GameState {
-    char board[6][7];
-    int playerTurn;
-};
-// This function prints the entire 6x7 Connect Four table.
-void printTable() {
-    //Printing out the table
-    for (int row = 0; row < 6; row++) {
-        for (int col = 0; col < 7; col++) {
-            cout << board[row][col] << ' ';
-        }
-        cout << '\n';
-    }
-    
-}
-
-// This function drops an 'X' or 'O' based on the player's choice.
-bool droppingShape(int choice) {
-    int playerChoice = choice - 1;
-    for (int row = 5; row >= 0; row--) {
-        if (board[row][playerChoice] == '.') {
-            if (playerTurn == 1) {
-                board[row][playerChoice] = 'X';
-                return true;
-            }
-            else {
-                board[row][playerChoice] = 'O';
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// This function checks if a player has won.
-bool checkWin(int player) {
-    char playerSymbol;
-    if (player == 1) playerSymbol = 'X';
-    if (player == 2) playerSymbol = 'O';
-
-    int inaRow = 0;
-    // Checking for win in a horizontal line.
-    for (int row = 0; row < 6; row++) {
-        for (int col = 0; col < 7; col++) {
-            if (board[row][col] == playerSymbol) {
-                inaRow++;
-                if (inaRow == 4) return true;
-            }
-            else {
-                inaRow = 0;
-            }
-        }
-        inaRow = 0;
-    }
-    // Checking for win in a vertical line.
-    for (int col = 0; col < 7; col++) {
-        for (int row = 0; row < 6; row++) {
-            if (board[row][col] == playerSymbol) {
-                inaRow++;
-                if (inaRow == 4) return true;
-            }
-            else {
-                inaRow = 0;
-            }
-        }
-        inaRow = 0;
-    }
-    // Checking for win in a diagonal top-left to bottom-right.
-    for (int col = 0; col < 4; col++) {
-        for (int row = 0; row < 3; row++) {
-            if (board[row][col] == playerSymbol && board[row+1][col+1] == playerSymbol && board[row+2][col+2] == playerSymbol && board[row+3][col+3] == playerSymbol) {
-                return true;
-            }
-        }
-    }
-    // Checking for win in a diagonal top-right to bottom-left.
-    for (int col = 3; col < 7; col++) {
-        for (int row = 0; row < 3; row++) {
-            if (board[row][col] == playerSymbol && board[row+1][col-1] == playerSymbol && board[row+2][col-2] == playerSymbol && board[row+3][col-3] == playerSymbol) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-
 int main() {
+    GameState realGame;
     //Initalize the table by filling all empty spots with '.'.
     for (int row = 0; row < 6; row++) {
         for (int col = 0; col < 7; col++) {
-            board[row][col] = '.';
+            realGame.board[row][col] = '.';
         }
     }
 
     int playerChoice;
+    MCTS simulation;
+    int numSim;
+    realGame.playerTurn = 1;
+    realGame.blocksDropped = 0;
     while (true) {
-        printTable();
-        cout << "Player " << playerTurn << ": Your turn!\n";
+        realGame.printTable();
+        cout << "Player " << realGame.playerTurn << ": Your turn!\n";
         cout << "Choose the column (1-7) to drop your shape!\n";
+        
+        cout << "How many simulations do you want to run?\n";
+        cin >> numSim;
+        int p1Wins = 0;
+        int p2Wins = 0;
+        int ties = 0;
+        for (int i = 0; i < numSim; ++i) {
+            int result = simulation.simulate(realGame);
+            if (result == 0) ++ties;
+            if (result == 1) ++p1Wins;
+            if (result == 2) ++p2Wins;
+        }
+        cout << "Number of ties:" << ties << "\n";
+        cout << "Number of Player 1 wins:" << p1Wins << "\n";
+        cout << "Number of Player 2 wins:" << p2Wins << "\n";
         while (true) {
             cin >> playerChoice;
             if (cin.fail()) {
@@ -118,30 +48,30 @@ int main() {
                 cout << "Invalid Column, try again!\n";
                 continue;
             }
-            if (!droppingShape(playerChoice)) {
+            if (!realGame.droppingShape(playerChoice)) {
                 cout << "The Column is full! Try again!\n";
                 continue;
             }
             break;
         }
-        blocksDropped++;
+        realGame.blocksDropped++;
         //Checking if a player has won.
-        if (checkWin(playerTurn)) {
-            cout << "Player " << playerTurn << " wins!\n";
-            printTable();
+        if (realGame.checkWin(realGame.playerTurn)) {
+            cout << "Player " << realGame.playerTurn << " wins!\n";
+            realGame.printTable();
             break;
         }
-        if (blocksDropped == 42) {
+        if (realGame.checkDraw()) {
             cout << "It's a draw!!";
-            printTable();
+            realGame.printTable();
             break;
         }
 
         //Switching Player turn.
-        if (playerTurn == 1) {
-            playerTurn = 2;
+        if (realGame.playerTurn == 1) {
+            realGame.playerTurn = 2;
         } else {
-            playerTurn = 1;
+            realGame.playerTurn = 1;
         }
 
     }
