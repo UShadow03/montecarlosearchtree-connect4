@@ -67,12 +67,33 @@ int MCTS::simulate(GameState state) {
         }
 
         vector<int> moves = state.getLegalMoves();
-        int randomNum = distrib(gen) - 1;
-        while (find(moves.begin(), moves.end(), randomNum) == moves.end()) {
-            randomNum = distrib(gen) - 1;
+
+        // Does the player have an immediete winning move?
+        int winningMove = -1;
+        for (int move : moves) {
+            GameState testState = state;
+            testState.droppingShape(move + 1);
+            if (testState.checkWin(state.playerTurn)) {
+                winningMove = move;
+                break;
+            }
         }
 
-        state.droppingShape(randomNum + 1);
+        int chosenMove;
+
+        // If they have a winning move, play it.
+        if (winningMove != -1) {
+            chosenMove = winningMove;
+        }
+        else {
+            //If no immediete winning move, generate a random one.
+            chosenMove = distrib(gen) - 1;
+            while (find(moves.begin(), moves.end(), chosenMove) == moves.end()) {
+                chosenMove = distrib(gen) - 1;
+            }
+
+        }
+        state.droppingShape(chosenMove + 1);
 
         // Switch player.
         if (state.playerTurn == 1) {
@@ -89,7 +110,7 @@ int MCTS::simulate(GameState state) {
 }
 
 Node* MCTS::select(Node* node) {
-    while (isFullyExpanded(node)) {
+    while (isFullyExpanded(node)&& !node->state.checkWin(1) && !node->state.checkWin(2) && !node->state.checkDraw()) {
         Node* bestChild = node->children[0];
         double bestUCT = calculateUCT(bestChild);
 
@@ -123,11 +144,11 @@ bool MCTS::isFullyExpanded(Node* node) {
     return node->children.size() == node->state.getLegalMoves().size();
 }
 
-void MCTS::backpropagate(Node* node, int result) {
+void MCTS::backpropagate(Node* node, int result, int player) {
     while (node != nullptr) {
         node->visits++;
 
-        if (result == 1) {
+        if (result == player) {
             node->wins++;
         }
 
@@ -135,14 +156,17 @@ void MCTS::backpropagate(Node* node, int result) {
     }
 }
 
-MCTSResult MCTS::findBestMove(GameState state, int simulations) {
+MCTSResult MCTS::findBestMove(GameState state, int simulations, int player) {
     Node* root = new Node(state);
     MCTS mcts;
     for (int i = 0; i < simulations; ++i) {
         Node* selection = mcts.select(root);
         Node* expansion = mcts.expand(selection);
+        if (expansion == nullptr) {
+            continue;
+        }
         int result = mcts.simulate(expansion->state);
-        mcts.backpropagate(expansion, result);
+        mcts.backpropagate(expansion, result, player);
     }
 
     Node* bestChild = root->children[0];

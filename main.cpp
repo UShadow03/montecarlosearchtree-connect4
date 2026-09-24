@@ -27,7 +27,7 @@ int main() {
             if (choice == 'Y') {
                 cout << "How many simulations do you want to run?\n";
                 cin >> numSim;
-                MCTSResult result = simulation.findBestMove(realGame, numSim);
+                MCTSResult result = simulation.findBestMove(realGame, numSim, realGame.playerTurn);
                 cout << "Statistics:\n";
                 for (const MoveStats& stat : result.stats) {
                     cout << "Column " << stat.move + 1 << ": Visits: " << stat.visits << " Wins: " << stat.wins << " Winrate: " << stat.winRate << "\n";
