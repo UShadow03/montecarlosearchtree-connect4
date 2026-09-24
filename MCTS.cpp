@@ -29,8 +29,40 @@ Node* MCTS::expand(Node* node) {
     if (moves.empty()) {
         return nullptr;
     }
-    // Choose one unexpanded move.
-    int move = moves[0];
+
+
+    int move = -1;
+
+    // Prefer an unexpanded move that wins immediately for this node's mover.
+    for (int m : moves) {
+        GameState testState = node->state;
+        testState.droppingShape(m + 1);
+        if (testState.checkWin(node->state.playerTurn)) {
+            move = m;
+            break;
+        }
+    }
+
+    // Otherwise, prefer an unexpanded move that blocks the opponent's
+    // immediate win.
+    if (move == -1) {
+        int opponent = (node->state.playerTurn == 1) ? 2 : 1;
+        for (int m : moves) {
+            GameState testState = node->state;
+            testState.playerTurn = opponent;
+            testState.droppingShape(m + 1);
+            if (testState.checkWin(opponent)) {
+                move = m;
+                break;
+            }
+        }
+    }
+
+    // If no moves was selected, pick the first move.
+    if (move = -1) {
+        move = moves[0];
+    }
+
 
     // Create the new game state.
     GameState newState = node->state;
@@ -79,11 +111,29 @@ int MCTS::simulate(GameState state) {
             }
         }
 
+        // Does the opponent have an immediete winning move that must be blocked?
+        int blockingMove = -1;
+        int opponent = (state.playerTurn == 1) ? 2 : 1;
+        for (int move : moves) {
+            GameState testState = state;
+            // Simulate the opponent dropping in this column instead of us.
+            testState.playerTurn = opponent;
+            testState.droppingShape(move + 1);
+            if (testState.checkWin(opponent)) {
+                blockingMove = move;
+                break;
+            }
+        }
+
         int chosenMove;
 
         // If they have a winning move, play it.
         if (winningMove != -1) {
             chosenMove = winningMove;
+        }
+        // If the opponent has a winning move next turn, block it!
+        else if (blockingMove != -1) {
+            chosenMove = blockingMove;
         }
         else {
             //If no immediete winning move, generate a random one.
@@ -144,16 +194,25 @@ bool MCTS::isFullyExpanded(Node* node) {
     return node->children.size() == node->state.getLegalMoves().size();
 }
 
-void MCTS::backpropagate(Node* node, int result, int player) {
+void MCTS::backpropagate(Node* node, int result) {
     while (node != nullptr) {
         node->visits++;
-
-        if (result == player) {
+        int moverPlayer = (node->state.playerTurn == 1) ? 2 : 1; // playerTurn was already flipped in expand()
+        if (result == moverPlayer) {
             node->wins++;
         }
-
         node = node->parent;
     }
+}
+
+static void deleteTree(Node* node) {
+    if (node == nullptr) {
+        return;
+    }
+    for (Node* child : node->children) {
+        deleteTree(child);
+    }
+    delete node;
 }
 
 MCTSResult MCTS::findBestMove(GameState state, int simulations, int player) {
@@ -161,12 +220,34 @@ MCTSResult MCTS::findBestMove(GameState state, int simulations, int player) {
     MCTS mcts;
     for (int i = 0; i < simulations; ++i) {
         Node* selection = mcts.select(root);
+        if (selection->state.checkWin(1) || selection->state.checkWin(2) || selection->state.checkDraw()) {
+            int result;
+            if (selection->state.checkWin(1)) {
+                result = 1;
+            }
+            else if (selection->state.checkWin(2)) {
+                result = 2;
+            }
+            else {
+                result = 0;
+            }
+            mcts.backpropagate(selection, result);
+            continue;
+        }
         Node* expansion = mcts.expand(selection);
         if (expansion == nullptr) {
             continue;
         }
         int result = mcts.simulate(expansion->state);
-        mcts.backpropagate(expansion, result, player);
+        mcts.backpropagate(expansion, result);
+    }
+
+    MCTSResult result{};
+
+    if (root->children.empty()) {
+        deleteTree(root);
+        result.bestMove = -1;
+        return result;
     }
 
     Node* bestChild = root->children[0];
@@ -183,16 +264,16 @@ MCTSResult MCTS::findBestMove(GameState state, int simulations, int player) {
         moveStats.move = child->move;
         moveStats.visits = child->visits;
         moveStats.wins = child->wins;
-        moveStats.winRate =
-            static_cast<double>(child->wins) / child->visits;
+        moveStats.winRate = child->visits == 0
+            ? 0.0
+            : static_cast<double>(child->wins) / child->visits;
 
         stats.push_back(moveStats);
     }
-
-    MCTSResult result;
-
     result.bestMove = bestChild->move;
     result.stats = stats;
+    
+    deleteTree(root);
 
     return result;
 

@@ -37,7 +37,7 @@ public:
     bool isFullyExpanded(Node* node);
     Node* select(Node* node);
     double calculateUCT(Node* node);
-    void backpropagate(Node* node, int result, int player);
+    void backpropagate(Node* node, int result);
     MCTSResult findBestMove(GameState state, int simulations, int player);
 };
 
