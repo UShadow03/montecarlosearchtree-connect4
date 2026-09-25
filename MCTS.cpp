@@ -59,7 +59,7 @@ Node* MCTS::expand(Node* node) {
     }
 
     // If no moves was selected, pick the first move.
-    if (move = -1) {
+    if (move == -1) {
         move = moves[0];
     }
 

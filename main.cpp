@@ -11,6 +11,7 @@ struct CliOptions {
     int simCount = 0;
     int firstPlayer = 1;
     bool showHelp = false;
+    bool aiEnabled = false;
 };
 
 void printUsage(const char* progName) {
@@ -66,6 +67,7 @@ int parseArgs(int argc, char* argv[], CliOptions& opts) {
                 return -1;
             }
             opts.haveSimCount = true;
+            opts.aiEnabled = true;
         }
         else if (arg == "--first-player") {
             if (i + 1 >= argc) {
@@ -113,6 +115,33 @@ int main(int argc, char* argv[]) {
     realGame.blocksDropped = 0;
     while (true) {
         realGame.printTable();
+        if (opts.aiEnabled && realGame.playerTurn == 2) {
+            cout << "AI (Player 2): Your turn!\n";
+            cout << "AI is thinking...\n";
+
+            MCTSResult result =
+                simulation.findBestMove(realGame, opts.simCount, 2);
+
+            cout << "AI chooses column " << result.bestMove + 1 << "\n";
+
+            realGame.droppingShape(result.bestMove + 1);
+            realGame.blocksDropped++;
+
+            if (realGame.checkWin(2)) {
+                cout << "AI wins!\n";
+                realGame.printTable();
+                break;
+            }
+
+            if (realGame.checkDraw()) {
+                cout << "It's a draw!!\n";
+                realGame.printTable();
+                break;
+            }
+
+            realGame.playerTurn = 1;
+            continue;
+        }
         cout << "Player " << realGame.playerTurn << ": Your turn!\n";  
         cout << "Would you like to use an MC Tree Search algorithm to help making your decisions? (Y/N)\n";
         cin >> choice;
