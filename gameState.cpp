@@ -5,6 +5,13 @@ using namespace std;
 
 // This function prints the entire 6x7 Connect Four table.
 void GameState::printTable() {
+    // Column headers so the player doesn't have to count characters
+    // to figure out which digit corresponds to which column.
+    for (int col = 1; col <= 7; col++) {
+        cout << col << ' ';
+    }
+    cout << '\n';
+
     //Printing out the table
     for (int row = 0; row < 6; row++) {
         for (int col = 0; col < 7; col++) {

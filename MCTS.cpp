@@ -17,22 +17,17 @@ Node::Node(GameState state, Node* parent, int move)
 
 Node* MCTS::expand(Node* node) {
     vector<int> moves = node->state.getLegalMoves();
-
     for (Node* child : node->children) {
         moves.erase(
             remove(moves.begin(), moves.end(), child->move),
             moves.end()
         );
     }
-
     // No unexpanded moves remain.
     if (moves.empty()) {
         return nullptr;
     }
-
-
     int move = -1;
-
     // Prefer an unexpanded move that wins immediately for this node's mover.
     for (int m : moves) {
         GameState testState = node->state;
@@ -42,7 +37,6 @@ Node* MCTS::expand(Node* node) {
             break;
         }
     }
-
     // Otherwise, prefer an unexpanded move that blocks the opponent's
     // immediate win.
     if (move == -1) {
@@ -57,46 +51,29 @@ Node* MCTS::expand(Node* node) {
             }
         }
     }
-
     // If no moves was selected, pick the first move.
     if (move == -1) {
         move = moves[0];
     }
-
-
     // Create the new game state.
     GameState newState = node->state;
     newState.droppingShape(move + 1);
-
     // Switch player.
-    if (newState.playerTurn == 1) {
-        newState.playerTurn = 2;
-    }
-    else {
-        newState.playerTurn = 1;
-    }
-
+    if (newState.playerTurn == 1) { newState.playerTurn = 2;}
+    else { newState.playerTurn = 1; }
     newState.blocksDropped++;
-
     // Create exactly ONE child.
     Node* child = new Node(newState, node, move);
     node->children.push_back(child);
-
     return child;
 }
 
 int MCTS::simulate(GameState state) {
     while (true) {
-
-        if (state.checkWin(1)) {
-            return 1;
-        }
-        if (state.checkWin(2)) {
-            return 2;
-        }
-        if (state.checkDraw()) {
-            return 0;
-        }
+        //Check if the game has ended.
+        if (state.checkWin(1)) { return 1; }
+        if (state.checkWin(2)) { return 2; }
+        if (state.checkDraw()) { return 0; }
 
         vector<int> moves = state.getLegalMoves();
 
